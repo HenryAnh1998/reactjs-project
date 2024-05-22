@@ -1,79 +1,35 @@
-import React from 'react'
-import './App.css'
-import { Route } from 'react-router-dom'
-import * as BookService from "./BookService"
-import BookLists from "./BookLists"
-import SearchBooks from "./SearchBooks"
+import "./App.css";
+import { useState, useEffect } from "react";
+import * as BooksService from "./services/BooksService";
+import { Routes, Route } from "react-router-dom";
+import HomePage from "./components/HomePage";
+import Search from "./components/Search";
 
-class BooksApp extends React.Component {
-  state = {
-    books : []
+const App = () => {
+  const [allBooks, setAllBooks] = useState([]);
+
+  useEffect(() => {
+    const getBooks = async () => {
+      const res = await BooksService.getAll();
+      setAllBooks(res);
+    }
+    getBooks();
+  }, [])
+
+  const changeShelf = async (shelf, updatedBook) => {
+    await BooksService.update(updatedBook, shelf);
+    updatedBook.shelf = shelf;
+    setAllBooks(allBooks.filter((book) => book.id !== updatedBook.id).concat(updatedBook));
   }
-
-  componentDidMount() {
-    BookService.getAll().then((books) => {
-      this.setState({ books })
-    })
-  }
-
-  shelves = [
-    {key:'currentlyReading' , name: 'Currently Reading'},
-    {key:'wantToRead' , name: 'Want to Read'},
-    {key:'read' , name: 'Read'},
-  ]
-
-  ChangeShelf = (book, shelf) => {
-    BookService.update(book, shelf).then(books => {
-      // if the book is new then add it to the state, and it's not changed to none
-      if(book.shelf === 'none' && shelf !== 'none'){
-        this.setState(state => {
-          const newBooks = state.books.concat(book);
-          return {books: newBooks}
-        })
-      }
-
-      const updatedBooks = this.state.books.map(c => {
-        // if it's already in the state, then change it's shelf
-        if (c.id === book.id) {
-          c.shelf = shelf
-        }
-        return c;
-      });
-
-      this.setState({
-        books: updatedBooks,
-      });
-      
-        // if 'none' shelve is chosen, then remove that book from the state
-        if(shelf === 'none'){
-          this.setState(state=>{
-            const newBooks = state.books.filter(deleteBook => deleteBook.id !== book.id);
-            return {books: newBooks}
-          })
-        }
-    });
-  }
-
-  render() {
-    const { books } = this.state;
-
-    return (
-      <div className="app">
-        <Route path='/search'
-        render={() => (
-          <SearchBooks books={books} onChangeShelf={this.ChangeShelf} />
-        )}
-        />
-
-        <Route exact path='/'
-        render={() => (
-          <BookLists books={books} shelves={this.shelves} onChangeShelf={this.ChangeShelf} />
-        )}
-        />
-      </div>
-    )
-  }
+  
+  return (
+    <div className="app">
+      <Routes>
+        <Route exact path="/" element={<HomePage allBooks={allBooks} changeShelf={changeShelf} />} />
+        <Route exact path="/search" element={<Search changeShelf={changeShelf} />} />
+      </Routes>
+    </div >
+  );
 }
 
-
-export default BooksApp
+export default App;
